@@ -1,6 +1,6 @@
 id=wallet_card_audit
 name=Wallet Card Audit
-version=0.5.5
-versionCode=11
+version=0.5.6
+versionCode=12
 author=wfire06100
-description=Tag-targeted Wallet audit with 30-second preparation and custom searches.
+description=Tag-targeted Wallet audit with expanded KeyMint operation search filters.
