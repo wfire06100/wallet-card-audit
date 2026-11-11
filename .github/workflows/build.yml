@@ -16,20 +16,22 @@ jobs:
           node --check module/webroot/app.js
       - name: Package
         run: |
+          V=$(sed -n 's/^version=//p' module/module.prop)
           mkdir -p dist
           cd module
-          zip -r ../dist/wallet-card-audit-v0.5.1.zip . -x 'webroot/data/*'
-          unzip -t ../dist/wallet-card-audit-v0.5.1.zip
+          zip -r "../dist/wallet-card-audit-v$V.zip" . -x 'webroot/data/*'
+          unzip -t "../dist/wallet-card-audit-v$V.zip"
           cd ..
           sha256sum dist/*.zip > dist/SHA256SUMS
+          echo "MODULE_VERSION=$V" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
-          name: wallet-card-audit-v0.5.1
+          name: wallet-card-audit
           path: dist/*
           if-no-files-found: error
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.5.1
-          name: Wallet Card Audit v0.5.1
+          tag_name: v${{ env.MODULE_VERSION }}
+          name: Wallet Card Audit v${{ env.MODULE_VERSION }}
           files: dist/*
           generate_release_notes: true
