@@ -1,18 +1,16 @@
 #!/system/bin/sh
-WALLET_PKG=com.google.android.apps.walletnfcrel
-BASE=/data/adb/wallet-card-audit
-STATE_FILE="$BASE/.wallet_foreground"
-PREV=false
-while true; do
-  CURRENT=$(dumpsys activity activities 2>/dev/null | grep -m1 'topResumedActivity=' || true)
-  if echo "$CURRENT" | grep -q "$WALLET_PKG"; then NOW=true; else NOW=false; fi
-  if [ "$NOW" = true ] && [ "$PREV" != true ]; then
-    /system/bin/sh "${0%/*}/audit.sh" start >/dev/null 2>&1 &
-    echo true > "$STATE_FILE"
-  elif [ "$NOW" = false ] && [ "$PREV" = true ]; then
-    /system/bin/sh "${0%/*}/audit.sh" stop >/dev/null 2>&1
-    echo false > "$STATE_FILE"
-  fi
-  PREV=$NOW
-  sleep 2
+D=${0%/*}; B=/data/adb/wallet-card-audit
+echo $$ > "$B/watcher.pid"
+trap 'exit 0' TERM INT HUP
+own=false; miss=0
+while :; do
+ top=$(dumpsys activity activities 2>/dev/null | grep -E 'topResumedActivity|mResumedActivity' | head -n 1)
+ if echo "$top" | grep -q 'com.google.android.apps.walletnfcrel'; then
+ miss=0
+ if [ ! -d "$B/lock" ]; then /system/bin/sh "$D/engine.sh" start && own=true; fi
+ else
+ miss=$((miss+1))
+ if [ "$own" = true ] && [ "$miss" -ge 5 ]; then /system/bin/sh "$D/engine.sh" stop; own=false; fi
+ fi
+ sleep 2
 done

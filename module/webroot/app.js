@@ -1,4 +1,26 @@
-const STATUS={observed:{label:'Signal observe',cls:'fail'},not_observed:{label:'Aucun signal',cls:'ok'},unknown:{label:'Inconnu',cls:'warn'}};
-async function post(action){await fetch('/action?cmd='+encodeURIComponent(action),{method:'POST'});await refresh();}
-async function refresh(){const cards=document.getElementById('cards');try{const r=await fetch('data/report.json',{cache:'no-store'});if(r.ok){const data=await r.json();document.getElementById('outcome').textContent='Resultat global : '+data.outcome+' — '+(data.generated_at||'date inconnue');cards.innerHTML='';(data.findings||[]).forEach(f=>{const s=STATUS[f.status]||STATUS.unknown;const div=document.createElement('article');div.className='card '+s.cls;div.innerHTML='<h2>'+f.title+'</h2><p><span class="badge '+s.cls+'">'+s.label+'</span></p><p>Correspondances : '+(f.matches||0)+'</p><p>'+(f.advice||'')+'</p>';cards.appendChild(div);});}}catch(e){document.getElementById('outcome').textContent='Aucun rapport genere.';cards.innerHTML='';}}
-document.getElementById('start').onclick=()=>post('start');document.getElementById('stop').onclick=()=>post('stop');document.getElementById('auto-toggle').onclick=()=>post('auto-toggle');document.getElementById('refresh').onclick=refresh;refresh();
+const $=id=>document.getElementById(id);let sequence=0,busy=false;
+function shell(cmd){return new Promise((resolve,reject)=>{
+ if(!window.ksu||typeof window.ksu.exec!=='function'){reject(Error('Pont BakaSU/KernelSU absent : ouvrir dans la WebUI du gestionnaire.'));return;}
+ const name='wca_'+Date.now()+'_'+sequence++;
+ const timer=setTimeout(()=>{delete window[name];reject(Error('Commande sans reponse apres 30 secondes.'));},30000);
+ window[name]=(code,out,err)=>{clearTimeout(timer);delete window[name];Number(code)===0?resolve(out):reject(Error('Code '+code+' : '+err+' '+out));};
+ try{window.ksu.exec(cmd,'{}',name);}catch(e){clearTimeout(timer);delete window[name];reject(e);}
+});}
+const base='/data/adb/modules/wallet_card_audit';
+async function call(action){return shell('/system/bin/sh '+base+'/engine.sh '+action);}
+async function update(){
+ const s=JSON.parse(await call('status'));
+ $('status').textContent='Backend '+s.version+' | Capture : '+s.capture+' | Automatique : '+(s.auto?'ON':'OFF');
+ $('capture').textContent=s.capture==='stopped'?'Demarrer l audit':'Arreter l audit';$('auto').textContent='Automatique : '+(s.auto?'ON':'OFF');
+ $('capture').disabled=busy||s.capture==='finalizing';$('auto').disabled=busy;
+ const r=JSON.parse(await call('report'));
+ $('report').replaceChildren();
+ function line(text){const p=document.createElement('p');p.textContent=text;$('report').append(p);}
+ if(!r.available){line('Aucun rapport : lancer puis arreter une capture.');return;}
+ line('Capture : '+r.raw_bytes+' octets | '+r.filtered_lines+' lignes filtrees | '+r.seconds+' s. Resultat Wallet : inconnu.');
+ if(r.raw_bytes===0||r.stderr_present)line('Verifier Diagnostics : capture vide ou sortie stderr presente.');
+ for(const f of r.findings)line(f.id+' : '+f.matching_lines+' ligne(s). Indice uniquement, pas une cause prouvee.');
+}
+async function run(action){if(busy)return;busy=true;$('error').textContent='';$('capture').disabled=true;$('auto').disabled=true;
+ try{if(action){const out=await call(action);if(action==='diagnostics'||action==='logs')$('output').textContent=out;}busy=false;await update();}catch(e){$('error').textContent=e.message;}finally{busy=false;}}
+$('capture').onclick=()=>run('toggle');$('auto').onclick=()=>run('auto-toggle');$('refresh').onclick=()=>run();$('diagnostics').onclick=()=>run('diagnostics');$('logs').onclick=()=>run('logs');run();setInterval(()=>{if(!busy)run();},5000);

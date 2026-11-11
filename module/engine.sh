@@ -1,0 +1,107 @@
+#!/system/bin/sh
+umask 077
+D=${0%/*}
+B=/data/adb/wallet-card-audit
+mkdir -p "$B"; chmod 700 "$B"
+live() {
+ [ -f "$B/$1.pid" ] || return 1
+ p=$(cat "$B/$1.pid")
+ case "$p" in ''|*[!0-9]*) return 1;; esac
+ [ -r "/proc/$p/cmdline" ] || return 1
+ tr '\000' ' ' < "/proc/$p/cmdline" | grep -Fq "$2"
+}
+stop() {
+ [ -d "$B/lock" ] || return 0
+ touch "$B/stop"
+ i=0
+ while [ -d "$B/lock" ] && [ "$i" -lt 18 ]; do sleep 1; i=$((i+1)); done
+ [ ! -d "$B/lock" ] || { echo 'Arret non confirme : consulter Diagnostics' >&2; return 1; }
+}
+status() {
+ s=stopped; a=false
+ [ -d "$B/lock" ] && s=starting
+ live worker 'engine.sh worker' && s=capturing
+ [ -f "$B/finalizing" ] && s=finalizing
+ live watcher watcher.sh && a=true
+ printf '{"version":"0.5.1","capture":"%s","auto":%s}\n' "$s" "$a"
+}
+case "${1:-status}" in
+ start)
+ mkdir "$B/lock" 2>/dev/null || { echo 'Capture active ou verrou residuel' >&2; exit 1; }
+ rm -f "$B/stop" "$B/finalizing"
+ nohup /system/bin/sh "$D/engine.sh" worker </dev/null >>"$B/engine.log" 2>&1 &
+ sleep 2
+ live worker 'engine.sh worker' || { echo 'Echec demarrage : Diagnostics' >&2; exit 1; }
+ status;;
+ stop) stop || exit 1; status;;
+ toggle) if [ -d "$B/lock" ]; then stop || exit 1; status; else exec /system/bin/sh "$0" start; fi;;
+ auto-toggle)
+ if live watcher watcher.sh; then kill "$p" || exit 1; rm -f "$B/watcher.pid"; stop || exit 1
+ else
+ nohup /system/bin/sh "$D/watcher.sh" </dev/null >>"$B/engine.log" 2>&1 &
+ sleep 1
+ live watcher watcher.sh || exit 1
+ fi
+ status;;
+ shutdown)
+ if live watcher watcher.sh; then kill "$p" || exit 1; fi
+ rm -f "$B/watcher.pid"
+ stop;;
+ status) status;;
+ report) if [ -f "$B/report.json" ]; then cat "$B/report.json"; else echo '{"available":false}'; fi;;
+ logs) if [ -f "$B/latest/events.txt" ]; then tail -n 150 "$B/latest/events.txt"; else echo 'Aucun evenement filtre. Arreter la capture pour generer le rapport.'; fi;;
+ diagnostics)
+ id; cat "$D/module.prop"; status
+ echo '--- engine ---'; tail -n 60 "$B/engine.log" 2>/dev/null
+ echo '--- logcat stderr ---'; cat "$B/latest/capture-errors.txt" 2>/dev/null
+ echo '--- context ---'; cat "$B/latest/context.txt" 2>/dev/null
+ exit 0;;
+ worker)
+ O="$B/session-$(date +%Y%m%d-%H%M%S)-$$"
+ mkdir -p "$O" || { rmdir "$B/lock"; exit 1; }
+ echo $$ > "$B/worker.pid"
+ rm -f "$B/latest"; ln -s "$O" "$B/latest"
+ P=
+ cleanup() {
+ if [ -n "$P" ]; then kill "$P" 2>/dev/null; wait "$P" 2>/dev/null; fi
+ rm -f "$O/raw.tmp" "$B/worker.pid" "$B/finalizing" "$B/stop"
+ rmdir "$B/lock" 2>/dev/null
+ }
+ trap cleanup EXIT
+ trap 'touch "$B/stop"' TERM INT HUP
+ { date -u; id; getprop ro.build.version.release; getprop ro.build.version.security_patch; pm list packages --show-versioncode com.google.android.apps.walletnfcrel; pm list packages --show-versioncode com.google.android.gms; } > "$O/context.txt" 2>&1
+ logcat -b main -b system -b crash -v threadtime -T 1 > "$O/raw.tmp" 2> "$O/capture-errors.txt" &
+ P=$!
+ i=0
+ while kill -0 "$P" 2>/dev/null && [ ! -f "$B/stop" ] && [ "$i" -lt 600 ]; do
+ size=$(wc -c < "$O/raw.tmp")
+ [ "$size" -lt 20971520 ] || break
+ sleep 1; i=$((i+1))
+ done
+ touch "$B/finalizing"
+ kill "$P" 2>/dev/null
+ wait "$P" 2>/dev/null
+ P=
+ bytes=$(wc -c < "$O/raw.tmp" | tr -d ' ')
+ grep -Ei 'wallet|tapandpay|tap.and.pay|tokeniz|provision|attest|keystore|keymint|keymaster|strongbox|nfc|SSLHandshakeException|UnknownHostException|FATAL EXCEPTION' "$O/raw.tmp" | sed -E 's/[0-9]{6,}/[NUMBER]/g;s/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/[EMAIL]/g;s/[Bb]earer [^ ]+/Bearer [TOKEN]/g' > "$O/events.txt"
+ lines=$(wc -l < "$O/events.txt" | tr -d ' ')
+ err=0; [ -s "$O/capture-errors.txt" ] && err=1
+ printf '{"available":true,"raw_bytes":%s,"filtered_lines":%s,"stderr_present":%s,"seconds":%s,"outcome":"unknown","findings":[' "$bytes" "$lines" "$err" "$i" > "$O/report.json"
+ sep=
+ for kind in attestation provisioning network keystore crash; do
+ case "$kind" in
+ attestation) pattern='attest.*(fail|error|reject)';;
+ provisioning) pattern='(tapandpay|tokeniz|provision).*(error|fail|declin)';;
+ network) pattern='SSLHandshakeException|UnknownHostException|SocketTimeoutException';;
+ keystore) pattern='(keystore|keymint|strongbox).*(error|fail|exception)';;
+ crash) pattern='FATAL EXCEPTION';;
+ esac
+ count=$(grep -Eic "$pattern" "$O/events.txt")
+ printf '%s{"id":"%s","matching_lines":%s}' "$sep" "$kind" "$count" >> "$O/report.json"
+ sep=,
+ done
+ printf ']}\n' >> "$O/report.json"
+ cp "$O/report.json" "$B/report.json.tmp" && mv "$B/report.json.tmp" "$B/report.json"
+ echo "Report completed: $O";;
+ *) echo 'Commande inconnue' >&2; exit 2;;
+esac

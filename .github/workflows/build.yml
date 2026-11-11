@@ -1,43 +1,35 @@
 name: Build module ZIP
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Read module version
-        id: meta
+      - uses: actions/checkout@v4
+      - name: Validate
         run: |
-          VERSION=$(grep '^version=' module/module.prop | cut -d= -f2)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Build module ZIP
+          for f in module/*.sh; do sh -n "$f" || exit 1; done
+          node --check module/webroot/app.js
+      - name: Package
         run: |
           mkdir -p dist
           cd module
-          zip -r "../dist/wallet-card-audit-v${{ steps.meta.outputs.version }}.zip" .
+          zip -r ../dist/wallet-card-audit-v0.5.1.zip . -x 'webroot/data/*'
+          unzip -t ../dist/wallet-card-audit-v0.5.1.zip
           cd ..
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          sha256sum dist/*.zip > dist/SHA256SUMS
+      - uses: actions/upload-artifact@v4
         with:
-          name: wallet-card-audit-v${{ steps.meta.outputs.version }}
-          path: dist/*.zip
-
-      - name: Create release
-        uses: softprops/action-gh-release@v2
+          name: wallet-card-audit-v0.5.1
+          path: dist/*
+          if-no-files-found: error
+      - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.meta.outputs.version }}
-          name: Wallet Card Audit v${{ steps.meta.outputs.version }}
-          files: dist/*.zip
+          tag_name: v0.5.1
+          name: Wallet Card Audit v0.5.1
+          files: dist/*
           generate_release_notes: true

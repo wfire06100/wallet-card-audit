@@ -1,29 +1,22 @@
-# Wallet Card Audit
+# Wallet Card Audit 0.5.1
 
-Module root Android pour auditer localement les tentatives d ajout de carte dans Google Wallet.
+Correctif ciblant le pont WebUI BakaSU/KernelSU `ksu.exec(command, optionsJSON, callbackName)`. Aucun serveur HTTP local fictif.
 
-## Modes
-- Manuel : `Action` puis **1** pour demarrer, **2** pour arreter et generer le rapport.
-- Automatique : `Action` puis **4** pour basculer Auto ON/OFF. La capture demarre lorsque Google Wallet passe au premier plan et s arrete lorsqu il en sort.
-- Statut : `Action` puis **3**.
+## Utilisation
+Installer le ZIP de la release ou de l'artefact GitHub Actions. Fermer puis rouvrir la WebUI apres mise a jour. Le titre et le backend doivent afficher 0.5.1.
+Un seul bouton bascule la capture manuelle. Un second interrupteur distinct gere le mode automatique. Action bascule la capture sans saisie clavier. L'etat est relu toutes les 5 secondes. Arreter la capture pour produire le rapport puis consulter Evenements et Diagnostics.
 
-## Installation sans redemarrage
-L installation cree le repertoire de donnees et active immediatement les scripts. Aucun redemarrage n est requis.
+## Installation a chaud
+Demande officielle MODULE_HOT_INSTALL_REQUEST si KSU_HAS_HOT_INSTALL=true ; sinon avertissement explicite. Support de cette fonction dans le build BakaSU de l'utilisateur non confirme. Pas de copie forcee dans les repertoires du gestionnaire. Zero reboot non garanti sans prise en charge par celui-ci.
 
-## WebUI
-Boutons Demarrer, Arreter, Auto ON/OFF et Actualiser ; cartes de diagnostic.
+## Capture
+Processus detache, arret par indicateur avec attente du rapport. Limite par session : 10 minutes ou environ 20 Mio. Buffers main/system/crash. Compteurs d'octets et lignes filtrees, sortie logcat et diagnostic accessibles. Une absence de signal ne prouve pas un succes. Decisions serveur/bancaires non accessibles.
 
-## Rapports
-`/data/adb/wallet-card-audit/<horodatage>/` contient `report.json`, `events.txt`, `context.txt` et `capture-errors.txt`.
+## Automatique
+OFF par defaut, non persistant apres reboot. Detection activite Wallet, delai de sortie de 10 secondes. Ne reconnait pas specifiquement un ajout de carte. Formats dumpsys variables : utiliser le manuel si necessaire. Desactiver le mode automatique pour garder le controle manuel d'une session.
 
-## Correction de capture
-`capture.pid` contient desormais le PID de `logcat`. L arret termine logcat, puis le script genere les rapports. Auparavant, l arret tuait le script parent et empechait la generation du rapport.
+## Confidentialite et desinstallation
+Donnees root en /data/adb/wallet-card-audit. Masquage partiel seulement : relire avant partage, ne pas publier PAN/CVV/OTP/jetons. Brut temporaire supprime apres filtrage ou sortie normale. Arret brutal pouvant laisser des fichiers : inspection manuelle necessaire. Pas d'effacement physique securise. Desinstallation : attend l'arret avant suppression ; echoue explicitement si l'arret n'est pas confirme. Les exports externes ne sont pas supprimes.
 
-## Limites
-Le module ne modifie pas Wallet, GMS, l attestation, les props ou SELinux. Les correspondances sont des indices, pas des causes prouvees.
-
-## Confidentialite
-La capture brute est temporaire et supprimee apres filtrage. Le masquage est partiel : relire avant partage. Ne jamais stocker PAN, CVV, OTP ou jetons.
-
-## Desinstallation
-Supprime integralement les rapports, verrous, fichiers temporaires et processus du module.
+## Validation
+Workflow verifie syntaxe shell, syntaxe JS, integrite ZIP et SHA256. Ces verifications ne remplacent pas les tests sur telephone. Aucun test BakaSU sur appareil effectue. Aucune modification Wallet, GMS, attestation, props, montages systeme ou SELinux.

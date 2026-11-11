@@ -1,6 +1,6 @@
 id=wallet_card_audit
 name=Wallet Card Audit
-version=0.4.0
-versionCode=5
+version=0.5.1
+versionCode=7
 author=wfire06100
-description=Local audit of Google Wallet card-add attempts. Manual or Wallet-triggered capture; read-only.
+description=Local Wallet audit with BakaSU/KernelSU WebUI bridge and visible diagnostics.
