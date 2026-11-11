@@ -18,7 +18,7 @@ case "${1:-status}" in
  [ ! -d "$B/lock" ] || { echo 'Stop capture before viewing network diagnostics.' >&2; exit 1; }
  echo 'Passive network clues only. Origin and server attribution: unverified.'
  echo 'HTTPS payload: not captured by this feature. Bodies are unavailable unless already logged.'
- echo 'Matches do not prove a public-key rejection or a direct GMS-to-Swile exchange.'
+ echo 'Matches do not prove a public-key rejection or identify a bank, issuer or server.'
  echo "--- Network clues | Page $page | Up to 100 lines ---"
  [ -f "$B/latest/events.txt" ] || { echo 'No retained events available.'; exit 0; }
  first=$(((page-1)*100+1)); last=$((page*100))
