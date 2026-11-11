@@ -27,8 +27,8 @@ case "${1:-page}" in
  [ "$page" -ge 1 ] && [ "$page" -le 10000 ] || exit 2
  case "$category" in
  all) pattern='.';;
- provisioning) pattern='tapandpay|tap.and.pay|tokeniz|provision';;
- keystore) pattern='keystore|keymint|keymaster|strongbox|teesimulator|systemlogger|softwareoperation|operationinterceptor|createoperation|generatekey|authorizecreate|txid|creating software operation|found new ikeystoreoperation|registering interceptor|restoring persisted key|failed to restore key|failed to restore symmetric metadata';;
+ provisioning) pattern='tapandpay|tap.and.pay|tokeniz|provision|failed to create encrypteddata';;
+ keystore) pattern='keystore|keymint|keymaster|strongbox|teesimulator|systemlogger|softwareoperation|operationinterceptor|createoperation|generatekey|importkey|post-importkey|authorizecreate|keyid|not found|forwarding to hal|generating software key|txid|creating software operation|found new ikeystoreoperation|registering interceptor|restoring persisted key|failed to restore key|failed to restore symmetric metadata|keymint_finish_operation|verification_failed|failed to create encrypteddata';;
  attestation) pattern='attest';;
  network) pattern='SSLHandshakeException|UnknownHostException|SocketTimeoutException|ConnectException';;
  crash) pattern='FATAL EXCEPTION';;

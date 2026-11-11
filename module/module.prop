@@ -1,6 +1,6 @@
 id=wallet_card_audit
 name=Wallet Card Audit
-version=0.5.8
-versionCode=14
+version=0.5.9
+versionCode=15
 author=wfire06100
-description=Wallet audit with expanded Keystore/TEESimulator event viewing.
+description=Wallet audit with import, HAL forwarding, KeyId and finish event collection.
