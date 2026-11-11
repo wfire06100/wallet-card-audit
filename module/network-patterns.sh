@@ -1,0 +1,2 @@
+#!/system/bin/sh
+NETWORK_PATTERN='swile|tokeniz|tapandpay|tap.and.pay|provision|invalid[ _-]*public[ _-]*key|public[ _-]*key.*(invalid|mismatch|not.match|reject)|key[ _-]*not[ _-]*found|invalid[ _-]*key|request[ _-]*id|correlation[ _-]*id|http/[0-9]|http[ _-]*(status|response)|response[ _-]*code|server[ _-]*(response|error)|sslhandshakeexception|unknownhostexception|sockettimeoutexception|connectexception|cronet|okhttp|networkmonitor'
