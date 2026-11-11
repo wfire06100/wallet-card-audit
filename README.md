@@ -1,22 +1,18 @@
-# Wallet Card Audit 0.5.5
+# Wallet Card Audit 0.5.7
 
-Local diagnostic module using the BakaSU/KernelSU ksu.exec WebUI bridge. No changes to Wallet/GMS, attestation, SELinux or system mounts.
+Fix: collect all logcat tags in main/system/crash at verbose level, then retain events matching tag OR message content. No provisioning-only gate and no seven-tag allowlist.
 
-## Recommended capture
-Start manually at least 30 seconds before adding a card. Recording begins immediately; status shows the remaining preparation time. Once it shows Capturing, reproduce the attempt, wait for the visible failure, then stop manually. This is guidance, not a block on opening Wallet. Report is generated on stop. Limit: 10 minutes or approximately 20 MiB. Automatic mode starts only when Wallet is foregrounded and cannot guarantee a 30-second lead-in.
+## Retained clues
+KeyMintSecurityLevelInterceptor, SystemLogger, SoftwareOperation, OperationInterceptor, createOperation, generateKey, authorizecreate, TXID, Creating SOFTWARE operation, Found new IKeystoreOperation, Registering interceptor, Restoring persisted key, Failed to restore key, Failed to restore symmetric metadata. Also retains Keystore/KeyMint/Keymaster/StrongBox, TapAndPay/tokenization, Pay tag, NetworkMonitor and common network/crash clues. UI tags KsuWebUI/KsuWebUIStandalone/WalletCardAudit/wallet-card-audit are excluded when recognized in threadtime metadata. Other apps can still use shared tags. Messages mentioning UI are not globally discarded.
 
-## Tag selection
-Exact logcat tags at verbose priority: KeyMintSecurityLevelInterceptor, SystemLogger, keystore2, Pay, TapAndPay, NetworkMonitor, KeymasterUtils. Other tags, including UI-specific KsuWebUI tags, are not selected. Other apps may emit the same selected tags; these events are not proven to belong to Wallet. Tags vary by device and build, so missing events do not establish success.
-All selected lines are retained after partial redaction. No provisioning keyword gate is applied during collection. Provisioning remains an optional display category. The tag selection narrows collection: crash and network counts outside these tags are not available.
+## Capture
+Start manually 30 seconds BEFORE card addition. Recording begins immediately and status displays preparation time; it does not prevent an early attempt. Stop after the visible failure. Automatic mode cannot ensure the 30-second lead-in. Limits: 10 minutes or approximately 20 MiB; wide collection may reach the size limit sooner. New capture required; excluded lines in older sessions cannot be reconstructed. Logging verbosity flags cannot generate messages absent from the component build.
 
 ## Viewer
-Case-insensitive literal filters: Keystore, TapAndPay, GMS, KeyMintSecurityLevelInterceptor, createOperation, generateKey, SoftwareOperation and Pay, plus custom text. Search runs on retained events of the latest session only, 100 lines per page. Copy displayed events copies the current page. Pay matches substrings including TapAndPay. Tags not captured cannot be recovered by custom search. Suggested viewing order: keystore, KeyMintSecurityLevelInterceptor, SystemLogger (custom), Pay, TapAndPay, tokenization (custom), NetworkMonitor (custom).
+Filters and custom search operate on retained events, 100 lines per page. Use custom TXID or operation text to follow the sequence. Copy displayed events copies only the current page. Existing WebUI header may still show 0.5.6; module.prop and Diagnostics identify the engine as 0.5.7.
 
-## Deletion
-Stop capture and turn Automatic OFF, then Delete logs and confirm. Deletes module sessions/report/internal logs, not Android global logs or Wallet/GMS data. Redaction is partial; review before sharing. Logical deletion only, no secure physical erasure.
+## Privacy
+Raw temporary capture includes unrelated app activity; deleted on normal cleanup. Retained text has partial email/Bearer/13-19 digit number masking only, NOT guaranteed anonymization or PAN detection. Shorter numeric TXIDs remain searchable; longer identifiers may be masked. Never share PAN/CVV/OTP/credentials. Abrupt termination can leave files. No secure physical erasure. Delete logs requires capture stopped and Automatic OFF.
 
-## Installation
-Use workflow release ZIP. Close and reopen WebUI after update. Hot install is requested only if KSU_HAS_HOT_INSTALL=true. Reboot-free activation on the user's BakaSU build remains unverified. Automatic mode is OFF by default and does not persist across reboot. Failed package-manager calls are no longer included in optional context collection.
-
-## Validation
-GitHub workflow checks shell syntax, app.js syntax, archive integrity and SHA256. This does not replace device tests; this version has not been run on the user's phone. Diagnostics expose logcat stderr and engine output. Wallet outcome stays unknown unless confirmed externally; counts are heuristic clues, not bank/server rejection reasons.
+## Installation and validation
+Workflow builds release ZIP with version from module.prop. Hot install is conditional on manager support; reboot-free BakaSU activation remains unverified. No modifications to Wallet/GMS/SELinux/attestation/system mounts. Device behavior not tested. Counts are heuristic clues, not proven causes or server-side bank results.
