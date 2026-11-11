@@ -1,6 +1,6 @@
 id=wallet_card_audit
 name=Wallet Card Audit
-version=0.5.2
-versionCode=8
+version=0.5.3
+versionCode=9
 author=wfire06100
-description=Local Wallet audit with log viewer, diagnostics and safe log deletion.
+description=Local Wallet audit with English UI, event copying and verified log deletion.
