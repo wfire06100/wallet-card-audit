@@ -27,7 +27,9 @@ status() {
  fi
  [ -f "$B/finalizing" ] && s=finalizing
  live watcher watcher.sh && a=true
- printf '{"version":"0.5.7","capture":"%s","auto":%s}\n' "$s" "$a"
+ version=$(sed -n 's/^version=//p' "$D/module.prop")
+ case "$version" in ''|*[!0-9.]*) version=unknown;; esac
+ printf '{"version":"%s","capture":"%s","auto":%s}\n' "$version" "$s" "$a"
 }
 case "${1:-status}" in
  start)
@@ -94,13 +96,13 @@ case "${1:-status}" in
  sep=
  for kind in attestation provisioning network keystore crash; do
  case "$kind" in
- attestation) pattern='attest.*(fail|error|reject)';;
- provisioning) pattern='(tapandpay|tokeniz|provision).*(error|fail|declin)';;
- network) pattern='SSLHandshakeException|UnknownHostException|SocketTimeoutException';;
- keystore) pattern='(keystore|keymint|strongbox).*(error|fail|exception)';;
+ attestation) pattern='attest';;
+ provisioning) pattern='tapandpay|tap.and.pay|tokeniz|provision|failed to create encrypteddata';;
+ network) pattern='SSLHandshakeException|UnknownHostException|SocketTimeoutException|ConnectException';;
+ keystore) pattern='keystore|keymint|keymaster|strongbox|teesimulator|systemlogger|softwareoperation|operationinterceptor|createoperation|generatekey|importkey|post-importkey|authorizecreate|keyid|not found|forwarding to hal|generating software key|txid|creating software operation|found new ikeystoreoperation|registering interceptor|restoring persisted key|failed to restore key|failed to restore symmetric metadata|keymint_finish_operation|verification_failed|failed to create encrypteddata';;
  crash) pattern='FATAL EXCEPTION';;
  esac
- count=$(grep -Eic "$pattern" "$O/events.txt")
+ count=$(awk -v pat="$pattern" 'tolower($0) ~ tolower(pat) {n++} END {print n+0}' "$O/events.txt")
  printf '%s{"id":"%s","matching_lines":%s}' "$sep" "$kind" "$count" >> "$O/report.json"; sep=,
  done
  printf ']}\n' >> "$O/report.json"
