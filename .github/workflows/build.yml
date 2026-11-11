@@ -2,36 +2,81 @@ name: Build module ZIP
 on:
   push:
     branches: [main]
+    paths:
+      - 'module/**'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: wallet-card-audit-release
+  cancel-in-progress: false
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Validate
         run: |
           for f in module/*.sh; do sh -n "$f" || exit 1; done
-          node --check module/webroot/app.js
+          for f in module/webroot/*.js; do node --check "$f" || exit 1; done
+      - name: Generate release version
+        shell: python
+        run: |
+          import os, re, subprocess, time
+          from pathlib import Path
+          prop = Path('module/module.prop')
+          text = prop.read_text()
+          current = re.search(r'^version=(\d+\.\d+\.\d+)$', text, re.M)
+          if not current:
+              raise SystemExit('Invalid module version')
+          parse = lambda s: tuple(map(int, s.split('.')))
+          version = parse(current[1])
+          tags = subprocess.check_output(['git', 'ls-remote', '--tags', '--refs', 'origin'], text=True)
+          versions = [parse(m[1]) for m in re.finditer(r'refs/tags/v(\d+\.\d+\.\d+)\s*$', tags, re.M)]
+          if versions:
+              latest = max(versions)
+              if version <= latest:
+                  version = (latest[0], latest[1], latest[2] + 1)
+          value = '.'.join(map(str, version))
+          code = re.search(r'^versionCode=(\d+)$', text, re.M)
+          if not code:
+              raise SystemExit('Missing versionCode')
+          new_code = max(int(code[1]) + 1, int(time.time()))
+          text = re.sub(r'^version=.*$', 'version=' + value, text, flags=re.M)
+          text = re.sub(r'^versionCode=.*$', 'versionCode=' + str(new_code), text, flags=re.M)
+          prop.write_text(text)
+          for filename in ('module/webroot/index.html', 'module/webroot/filters.js'):
+              path = Path(filename)
+              data = re.sub(r'Wallet Card Audit \d+\.\d+\.\d+', 'Wallet Card Audit ' + value, path.read_text())
+              data = re.sub(r'(app|filters)\.js\?v=[0-9.]+', lambda m: m[1] + '.js?v=' + value, data)
+              path.write_text(data)
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('MODULE_VERSION=' + value + '\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('Prepared version: ' + value + '\n\nSource commit: ' + os.environ['GITHUB_SHA'] + '\n')
       - name: Package
         run: |
-          V=$(sed -n 's/^version=//p' module/module.prop)
+          for f in module/webroot/*.js; do node --check "$f" || exit 1; done
           mkdir -p dist
           cd module
-          zip -r "../dist/wallet-card-audit-v$V.zip" . -x 'webroot/data/*'
-          unzip -t "../dist/wallet-card-audit-v$V.zip"
-          cd ..
-          sha256sum dist/*.zip > dist/SHA256SUMS
-          echo "MODULE_VERSION=$V" >> "$GITHUB_ENV"
+          zip -r "../dist/wallet-card-audit-v$MODULE_VERSION.zip" . -x 'webroot/data/*'
+          unzip -t "../dist/wallet-card-audit-v$MODULE_VERSION.zip"
+          cd ../dist
+          sha256sum *.zip > SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: wallet-card-audit
+          name: wallet-card-audit-v${{ env.MODULE_VERSION }}
           path: dist/*
           if-no-files-found: error
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.MODULE_VERSION }}
+          target_commitish: ${{ github.sha }}
           name: Wallet Card Audit v${{ env.MODULE_VERSION }}
           files: dist/*
+          fail_on_unmatched_files: true
           generate_release_notes: true
