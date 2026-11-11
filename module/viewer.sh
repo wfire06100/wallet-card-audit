@@ -28,7 +28,7 @@ case "${1:-page}" in
  case "$category" in
  all) pattern='.';;
  provisioning) pattern='tapandpay|tap.and.pay|tokeniz|provision';;
- keystore) pattern='keystore|keymint|keymaster|strongbox';;
+ keystore) pattern='keystore|keymint|keymaster|strongbox|teesimulator|systemlogger|softwareoperation|operationinterceptor|createoperation|generatekey|authorizecreate|txid|creating software operation|found new ikeystoreoperation|registering interceptor|restoring persisted key|failed to restore key|failed to restore symmetric metadata';;
  attestation) pattern='attest';;
  network) pattern='SSLHandshakeException|UnknownHostException|SocketTimeoutException|ConnectException';;
  crash) pattern='FATAL EXCEPTION';;

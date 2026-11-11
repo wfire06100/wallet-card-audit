@@ -1,6 +1,6 @@
 id=wallet_card_audit
 name=Wallet Card Audit
-version=0.5.7
-versionCode=13
+version=0.5.8
+versionCode=14
 author=wfire06100
-description=Wallet audit with tag-or-message KeyMint/TXID selection.
+description=Wallet audit with expanded Keystore/TEESimulator event viewing.
