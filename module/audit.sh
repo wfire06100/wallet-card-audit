@@ -13,14 +13,11 @@ stop_capture() {
     rm -f "$PIDFILE"
   fi
   rmdir "$LOCK" 2>/dev/null
-  echo 'Audit arrete.'
+  echo 'Audit arrete. Rapport genere si une capture etait active.'
 }
 case "$CMD" in
   stop) stop_capture; exit 0 ;;
-  status)
-    if [ -f "$PIDFILE" ]; then echo "Audit actif (PID $(cat "$PIDFILE"))."; else echo 'Audit inactif.'; fi
-    exit 0
-    ;;
+  status) if [ -f "$PIDFILE" ]; then echo "Audit actif (logcat PID $(cat "$PIDFILE"))."; else echo 'Audit inactif.'; fi; exit 0 ;;
   start) ;;
   *) echo 'Usage: audit.sh start|stop|status'; exit 2 ;;
 esac
@@ -30,7 +27,7 @@ mkdir -p "$OUT" || exit 1
 RAW="$OUT/.capture.tmp"
 {
   date -u '+%FT%TZ'
-  echo "trigger=manual_or_wallet_foreground"
+  echo "trigger=$CMD"
   echo "android=$(getprop ro.build.version.release)"
   echo "sdk=$(getprop ro.build.version.sdk)"
   echo "security_patch=$(getprop ro.build.version.security_patch)"
@@ -40,11 +37,11 @@ RAW="$OUT/.capture.tmp"
   echo "private_dns=$(settings get global private_dns_mode 2>/dev/null)"
   echo "airplane=$(settings get global airplane_mode_on 2>/dev/null)"
 } > "$OUT/context.txt" 2>&1
-echo "$$" > "$PIDFILE"
 echo 'Capture activee. Reproduisez le probleme dans Wallet.'
-logcat -b main -b system -b crash -v threadtime -T 1 > "$RAW" 2> "$OUT/capture-errors.txt" &
+logcat -b all -v threadtime -T 1 > "$RAW" 2> "$OUT/capture-errors.txt" &
 CAP_PID=$!
-trap 'kill "$CAP_PID" 2>/dev/null; wait "$CAP_PID" 2>/dev/null; rm -f "$PIDFILE"; rmdir "$LOCK" 2>/dev/null; exit 0' EXIT INT TERM HUP
+echo "$CAP_PID" > "$PIDFILE"
+trap 'rm -f "$PIDFILE"; rmdir "$LOCK" 2>/dev/null' EXIT INT TERM HUP
 wait "$CAP_PID"
 CAP_PID=
 grep -Ei 'wallet|tapandpay|tap.and.pay|tokeniz|provision|attest|keystore|keymint|keymaster|strongbox|nfc|SSLHandshakeException|UnknownHostException|FATAL EXCEPTION' "$RAW" \
@@ -52,7 +49,7 @@ grep -Ei 'wallet|tapandpay|tap.and.pay|tokeniz|provision|attest|keystore|keymint
 > "$OUT/events.txt"
 rm -f "$RAW"
 REPORT="$OUT/report.json"
-printf '{"schema":3,"generated_at":"%s","outcome":"unknown","findings":[' "$(date -u +%FT%TZ)" > "$REPORT"
+printf '{"schema":4,"generated_at":"%s","outcome":"unknown","findings":[' "$(date -u +%FT%TZ)" > "$REPORT"
 SEP=
 finding() {
   ID=$1; TITLE=$2; SEVERITY=$3; PATTERN=$4; ADVICE=$5
