@@ -17,7 +17,7 @@
  $('page').textContent='Page '+page;$('prev').disabled=page<=1;$('copybox').hidden=true;
  };
  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!busy){page=1;run(events);}});
- $('apply').onclick=()=>{if(!busy){page=1;run(events);}};
+ $('apply')?.remove();
  select.onchange=()=>{input.hidden=select.value!=='custom';if(select.value!=='custom'&&!busy){page=1;run(events);}};
  const heading=document.querySelector('h1');if(heading)heading.textContent='Wallet Card Audit 0.5.9';
 })();
