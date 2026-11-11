@@ -1,22 +1,22 @@
-# Wallet Card Audit 0.5.1
+# Wallet Card Audit 0.5.5
 
-Correctif ciblant le pont WebUI BakaSU/KernelSU `ksu.exec(command, optionsJSON, callbackName)`. Aucun serveur HTTP local fictif.
+Local diagnostic module using the BakaSU/KernelSU ksu.exec WebUI bridge. No changes to Wallet/GMS, attestation, SELinux or system mounts.
 
-## Utilisation
-Installer le ZIP de la release ou de l'artefact GitHub Actions. Fermer puis rouvrir la WebUI apres mise a jour. Le titre et le backend doivent afficher 0.5.1.
-Un seul bouton bascule la capture manuelle. Un second interrupteur distinct gere le mode automatique. Action bascule la capture sans saisie clavier. L'etat est relu toutes les 5 secondes. Arreter la capture pour produire le rapport puis consulter Evenements et Diagnostics.
+## Recommended capture
+Start manually at least 30 seconds before adding a card. Recording begins immediately; status shows the remaining preparation time. Once it shows Capturing, reproduce the attempt, wait for the visible failure, then stop manually. This is guidance, not a block on opening Wallet. Report is generated on stop. Limit: 10 minutes or approximately 20 MiB. Automatic mode starts only when Wallet is foregrounded and cannot guarantee a 30-second lead-in.
 
-## Installation a chaud
-Demande officielle MODULE_HOT_INSTALL_REQUEST si KSU_HAS_HOT_INSTALL=true ; sinon avertissement explicite. Support de cette fonction dans le build BakaSU de l'utilisateur non confirme. Pas de copie forcee dans les repertoires du gestionnaire. Zero reboot non garanti sans prise en charge par celui-ci.
+## Tag selection
+Exact logcat tags at verbose priority: KeyMintSecurityLevelInterceptor, SystemLogger, keystore2, Pay, TapAndPay, NetworkMonitor, KeymasterUtils. Other tags, including UI-specific KsuWebUI tags, are not selected. Other apps may emit the same selected tags; these events are not proven to belong to Wallet. Tags vary by device and build, so missing events do not establish success.
+All selected lines are retained after partial redaction. No provisioning keyword gate is applied during collection. Provisioning remains an optional display category. The tag selection narrows collection: crash and network counts outside these tags are not available.
 
-## Capture
-Processus detache, arret par indicateur avec attente du rapport. Limite par session : 10 minutes ou environ 20 Mio. Buffers main/system/crash. Compteurs d'octets et lignes filtrees, sortie logcat et diagnostic accessibles. Une absence de signal ne prouve pas un succes. Decisions serveur/bancaires non accessibles.
+## Viewer
+Case-insensitive literal filters: Keystore, TapAndPay, GMS, KeyMintSecurityLevelInterceptor, createOperation, generateKey, SoftwareOperation and Pay, plus custom text. Search runs on retained events of the latest session only, 100 lines per page. Copy displayed events copies the current page. Pay matches substrings including TapAndPay. Tags not captured cannot be recovered by custom search. Suggested viewing order: keystore, KeyMintSecurityLevelInterceptor, SystemLogger (custom), Pay, TapAndPay, tokenization (custom), NetworkMonitor (custom).
 
-## Automatique
-OFF par defaut, non persistant apres reboot. Detection activite Wallet, delai de sortie de 10 secondes. Ne reconnait pas specifiquement un ajout de carte. Formats dumpsys variables : utiliser le manuel si necessaire. Desactiver le mode automatique pour garder le controle manuel d'une session.
+## Deletion
+Stop capture and turn Automatic OFF, then Delete logs and confirm. Deletes module sessions/report/internal logs, not Android global logs or Wallet/GMS data. Redaction is partial; review before sharing. Logical deletion only, no secure physical erasure.
 
-## Confidentialite et desinstallation
-Donnees root en /data/adb/wallet-card-audit. Masquage partiel seulement : relire avant partage, ne pas publier PAN/CVV/OTP/jetons. Brut temporaire supprime apres filtrage ou sortie normale. Arret brutal pouvant laisser des fichiers : inspection manuelle necessaire. Pas d'effacement physique securise. Desinstallation : attend l'arret avant suppression ; echoue explicitement si l'arret n'est pas confirme. Les exports externes ne sont pas supprimes.
+## Installation
+Use workflow release ZIP. Close and reopen WebUI after update. Hot install is requested only if KSU_HAS_HOT_INSTALL=true. Reboot-free activation on the user's BakaSU build remains unverified. Automatic mode is OFF by default and does not persist across reboot. Failed package-manager calls are no longer included in optional context collection.
 
 ## Validation
-Workflow verifie syntaxe shell, syntaxe JS, integrite ZIP et SHA256. Ces verifications ne remplacent pas les tests sur telephone. Aucun test BakaSU sur appareil effectue. Aucune modification Wallet, GMS, attestation, props, montages systeme ou SELinux.
+GitHub workflow checks shell syntax, app.js syntax, archive integrity and SHA256. This does not replace device tests; this version has not been run on the user's phone. Diagnostics expose logcat stderr and engine output. Wallet outcome stays unknown unless confirmed externally; counts are heuristic clues, not bank/server rejection reasons.
