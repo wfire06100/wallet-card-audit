@@ -20,4 +20,42 @@
  $('apply')?.remove();
  select.onchange=()=>{input.hidden=select.value!=='custom';if(select.value!=='custom'&&!busy){page=1;run(events);}};
  const heading=document.querySelector('h1');if(heading)heading.textContent='Wallet Card Audit 0.5.9';
+ const style=document.createElement('style');
+ style.textContent='#output mark.wca-match{background:#ffeb3b;color:#111;border-radius:2px;padding:0;font:inherit;}';
+ document.head.append(style);
+ const categories={
+ all:[],
+ attestation:['attest'],
+ provisioning:['tapandpay','tap.and.pay','tokeniz','provision','failed to create encrypteddata'],
+ keystore:['keystore','keymint','keymaster','strongbox',...Object.entries(terms).filter(([key])=>!['keystore_literal','tapandpay','gms','uid_wallet','network_monitor','tokenization','pay'].includes(key)).map(([,value])=>value)],
+ network:['SSLHandshakeException','UnknownHostException','SocketTimeoutException','ConnectException'],
+ crash:['FATAL EXCEPTION'],
+ network_passive:['tokeniz','tapandpay','tap.and.pay','provision','invalid','public key','public_key','public-key','mismatch','reject','key not found','key_not_found','key-not-found','request','correlation','HTTP','status','response','server','SSLHandshakeException','UnknownHostException','SocketTimeoutException','ConnectException','cronet','okhttp','networkmonitor']
+ };
+ function highlight(words){
+ const output=$('output');const text=output.textContent;
+ const unique=[...new Set(words.filter(Boolean))].sort((a,b)=>b.length-a.length);
+ if(!unique.length)return;
+ const escaped=unique.map(word=>word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+ const pattern=new RegExp(escaped.join('|'),'gi');
+ const fragment=document.createDocumentFragment();let cursor=0,match;
+ while((match=pattern.exec(text))!==null){
+ fragment.append(document.createTextNode(text.slice(cursor,match.index)));
+ const mark=document.createElement('mark');mark.className='wca-match';mark.textContent=match[0];fragment.append(mark);
+ cursor=match.index+match[0].length;
+ }
+ fragment.append(document.createTextNode(text.slice(cursor)));
+ const top=output.scrollTop,left=output.scrollLeft;
+ output.replaceChildren(fragment);output.scrollTop=top;output.scrollLeft=left;
+ }
+ function installHighlight(){
+ const previous=events;
+ events=async function(){
+ const filter=select.value;
+ const words=filter==='custom'?[input.value]:(filter in terms?[needles[filter]||terms[filter]]:(categories[filter]||[]));
+ await previous();highlight(words);
+ };
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installHighlight,{once:true});
+ else installHighlight();
 })();
